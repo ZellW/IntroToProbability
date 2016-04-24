@@ -1,0 +1,49 @@
+---
+title: "CodeBook"
+output: html_document
+---
+
+Let's first get the data.  The original data set was provided by Coursera/Duke.  The data was saved tot eh data folder in the working directory for this project.
+
+I have saved the data in a
+
+```{r getRawdata}
+setwd("~/GitHub/IntroToProbability/project")
+
+if(!exists("brfss2013")) load("./data/brfss2013.RData")
+class(brfss2013)
+```
+
+Some [important notes](http://www.cdc.gov/brfss/annual_data/2013/pdf/CODEBOOK13_LLCP.pdf) about the data:
+
+- All missing values are coded NA in the R Workspace.
+- Many variables, such as age, race, education, as well as variables that measure counts of events (drinks, times eating fruit, etc.) have alternate versions in the Calculated Variables section of the dataset. Review this section prior to choosing variables for analysis.
+
+Let's get only the data we need.  I know I want to look at data between the US States and the US Territories.
+
+The BRFSS was initiated in 1984, with 15 states collecting surveillance data on risk behaviors through monthly telephone interviews. Over time, the number of states participating in the survey increased; by 2001, 50 states, the District of Columbia, Puerto Rico, Guam, and the US Virgin Islands were participating in the BRFSS. Today, all 50 states, the District of Columbia, **Puerto Rico**, and **Guam** collect data annually and American Samoa, Federated States of Micronesia, and Palau collect survey data over a limited point- in-time (usually one to three months). 
+
+In the data, we know:  _state: State Fips Code:
+
+_state (66) = Guam
+_state (72) = Puerto Rico
+For fun:
+_state (37) = North Carolina
+
+Can also compare by year:
+
+Inverview Year (iyear):
+iyear (2013) = 2013
+iyear (2014) = 2014
+
+Let's add a new column to the data (like we more than the 330 we already have) to identify if the observation is from a US State, i.e., not either Puerto Rico or Guam.
+
+```{ addUScolumn}
+library(dplyr)
+brfss2013_withState <- brfss2013 %>% mutate(isState = ifelse(X_state %in% !c(66, 72), "US", "notUS"))
+```
+
+
+
+
+
