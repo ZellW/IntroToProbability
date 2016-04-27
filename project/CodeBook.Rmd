@@ -10,8 +10,6 @@ The BRFSS objective is to collect uniform, state-specific data on preventive hea
 
 Sample Description In a telephone survey such as the BRFSS, a sample record is one telephone number in the list of all telephone numbers the system randomly selects for dialing. To meet the BRFSS standard for the participating states' sample designs, one must be able to justify sample records as a probability sample of all households with telephones in the state. All participating areas met this criterion in 2013. Fifty-one projects used a disproportionate stratified sample (DSS) design for their landline samples. Guam and Puerto Rico used a simple random-sample design. 
 
-
-
 ##Get Data 
 
 Let's first get the data.  The original data set was provided by Coursera/Duke.  The data was saved tot eh data folder in the working directory for this project.
@@ -49,16 +47,15 @@ iyear (2014) = 2014
 
 Let's add a new column to the data (like we more than the 330 we already have) to identify if the observation is from a US State, i.e., not either Puerto Rico or Guam.
 
-```{ addUScolumn}
+```{r addUScolumn}
 library(dplyr)
 #Before assigning a new column for US State v Not US State, let's make sure the state data looks clean:
 unique(brfss2013$X_state)
 #Looks like X_state values of 0 and 80 do not make sense.  Le'ts make sure
-brfss2013 %>% filter(X_state==0)#This returns too much for report.  80 also returns NAs
 #Need to remove X_state 0 and 80
 modData <- filter(brfss2013, !X_state == "80"); modData <- filter(modData, !X_state == "0")
 unique(modData$X_state)
-brfss2013_withState <- brfss2013 %>% mutate(isState = ifelse(X_state %in% !c(66, 72), "US", "notUS"))
+modData <- modData %>% mutate(isState = ifelse(X_state %in% !c(66, 72), "US", "notUS"))
 ```
 
 States looks OK.  Now lets get the columns I am interested in - behavorial health
@@ -88,13 +85,45 @@ qlhlth2: How Many Days Full Of Energy In Past 30 Days
 ```{r getVariables}
 variablesIwant <- c("X_state", "iyear", "nummen", "numwomen", "genhlth", "physhlth", "menthlth", "poorhlth", "sleptim1", "addepev2", "educa", "weight2", "exerany2", "exract11", "exeroft1", "exerhmm1", "exract21", "exeroft2", "exerhmm2", "strength", "qlmentl2", "qlstres2", "qlhlth2")
 
-modData <- select(modData,one_of(variablesIwant))
+modData <- select(modData,one_of(variablesIwant))#new option for me in dplyr - useful
+rm(brfss2013); rm(variablesIwant)
 ```
 Usually a safe maximum threshold is 5% of the total for large datasets. If missing data for a certain feature or sample is more than 5% then you probably should leave that feature or sample out. We therefore check for features (columns) and samples (rows) where more than 5% of the data is missing using a simple function
 
 ```{r missingData}
 pMiss <- function(x){sum(is.na(x))/length(x)*100}
-format(apply(modData, 2, pMiss), scientific=FALSE, digits=2)#2 mneans apply over columns
+format(apply(modData_withState, 2, pMiss), scientific=FALSE, digits=2)#2 mneans apply over columns
+```
+
+Let's try visualizing the missging data
+
+Method 1:
+```{r}
+library(cutoffR)
+#How many NA are there in the working data?
+nmissing(modData_withState)
+#HeatStruct is interesting but only works with numeric variables
+HeatStruct(modData_withState)
+```
+Method 2:
+See http://www.r-bloggers.com/imputing-missing-data-with-r-mice-package/
+
+```{r}
+library(mice)
+md.pattern(modData_withState)#works but returns too much data
+
+#Prmising solution but a problem loading the VIM package
+#To vercome the problem with have the wrong version on nlme, use this (download nlme ZIP first)
+#install.packages("C:\\Users\\cweaver\\Desktop\\nlme\\nlme", repos = NULL, type="source")
+#much easier to do this:  RStudio -> Tools -> Install Packages -> Install from 'Package Archive File'  See https://rpubs.com/Felix/15529
+#Need to eval.  See https://cran.r-project.org/web/packages/VIMGUI/vignettes/VIM-EU-SILC.pdf
+#
+library(VIM)
+aggr_plot <- aggr(modData, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(modData), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
+#Now try using this tool
+library(VIMGUI)#See https://cran.r-project.org/web/packages/VIMGUI/vignettes/VIM-EU-SILC.pdf
+vmGUImenu()
+
 ```
 
 
