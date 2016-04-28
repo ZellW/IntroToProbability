@@ -88,11 +88,16 @@ variablesIwant <- c("X_state", "iyear", "nummen", "numwomen", "genhlth", "physhl
 modData <- select(modData,one_of(variablesIwant))#new option for me in dplyr - useful
 rm(brfss2013); rm(variablesIwant)
 ```
+
+```{r reName}
+
+
+```
 Usually a safe maximum threshold is 5% of the total for large datasets. If missing data for a certain feature or sample is more than 5% then you probably should leave that feature or sample out. We therefore check for features (columns) and samples (rows) where more than 5% of the data is missing using a simple function
 
 ```{r missingData}
 pMiss <- function(x){sum(is.na(x))/length(x)*100}
-format(apply(modData_withState, 2, pMiss), scientific=FALSE, digits=2)#2 mneans apply over columns
+format(apply(modData, 2, pMiss), scientific=FALSE, digits=2)#2 mneans apply over columns
 ```
 
 Let's try visualizing the missging data
@@ -101,16 +106,16 @@ Method 1:
 ```{r}
 library(cutoffR)
 #How many NA are there in the working data?
-nmissing(modData_withState)
+nmissing(modData)
 #HeatStruct is interesting but only works with numeric variables
-HeatStruct(modData_withState)
+HeatStruct(modData)
 ```
 Method 2:
 See http://www.r-bloggers.com/imputing-missing-data-with-r-mice-package/
 
 ```{r}
 library(mice)
-md.pattern(modData_withState)#works but returns too much data
+md.pattern(modData)#works but returns too much data
 
 #Prmising solution but a problem loading the VIM package
 #To vercome the problem with have the wrong version on nlme, use this (download nlme ZIP first)
@@ -124,6 +129,46 @@ aggr_plot <- aggr(modData, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE,
 library(VIMGUI)#See https://cran.r-project.org/web/packages/VIMGUI/vignettes/VIM-EU-SILC.pdf
 vmGUImenu()
 
+```
+
+```{r countNA}
+countNAs <- apply(modData, 2, function(x) sum(is.na(x)))
+barplot(countNAs)
+```
+
+```{r}
+countNAs_df <- as.data.frame(countNAs)
+countNAs_df$cat <- row.names(countNAs_df)
+```
+
+Now lets make a plot that looks better
+```{r}
+library(ggplot2)
+plot2 <- ggplot(countNAs_df, aes(x = reorder(Cat, -countNAs), y = countNAs)) +
+  geom_bar(stat = "identity")
+plot2
+
+plot3 <- ggplot(countNAs_df, aes(x = reorder(Cat, -countNAs), y = countNAs)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle=90))
+plot3
+
+library(scales)
+plot4 <- ggplot(countNAs_df, aes(x = reorder(cat, -countNAs), y = countNAs)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle=90)) +
+  scale_y_continuous(labels = comma)
+plot4
+
+plot5 <- ggplot(countNAs_df, aes(x = reorder(cat, -countNAs), y = countNAs), 
+                ylab("NA Count"), xlab("Variable Name")) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle=90)) +
+  scale_y_continuous(labels = comma) +
+  xlab("Variable Names") + ylab("NA Count") + ggtitle("Count of NAs in Data")
+  
+
+plot5
 ```
 
 
