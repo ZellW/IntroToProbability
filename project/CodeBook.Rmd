@@ -74,24 +74,21 @@ exerany2: Exercise In Past 30 Days
 exract11: Type Of Physical Activity
 exeroft1: How Many Times Walking, Running, Jogging, Or Swimming
 exerhmm1: Minutes Or Hours Walking, Running, Jogging, Or Swimming
-exract21: Other Type Of Physical Activity Giving Most Exercise During Past Month
-exeroft2: How Many Times Walking, Running, Jogging, Or Swimming
-exerhmm2: Minutes Or Hours Walking, Running, Jogging, Or Swimming
 strength: How Many Times Did You Do Physical Activities Or Exercises To Strengthen Your Mu
 qlmentl2: How Many Days Depressed In Past 30 Days
 qlstres2: How Many Days Felt Anxious In Past 30 Days
 qlhlth2: How Many Days Full Of Energy In Past 30 Days
 
 ```{r getVariables}
-variablesIwant <- c("X_state", "iyear", "nummen", "numwomen", "genhlth", "physhlth", "menthlth", "poorhlth", "sleptim1", "addepev2", "educa", "weight2", "exerany2", "exract11", "exeroft1", "exerhmm1", "exract21", "exeroft2", "exerhmm2", "strength", "qlmentl2", "qlstres2", "qlhlth2")
+variablesIwant <- c("X_state", "iyear", "nummen", "numwomen", "genhlth", "physhlth", "menthlth", "poorhlth", "sleptim1", "addepev2", "educa", "weight2", "exerany2", "exract11", "exeroft1", "exerhmm1", "strength", "qlmentl2", "qlstres2", "qlhlth2")
 
 modData <- select(modData,one_of(variablesIwant))#new option for me in dplyr - useful
 rm(brfss2013); rm(variablesIwant)
 ```
 
 ```{r reName}
-
-
+#Rename with dplyr
+modData <- rename(modData,  US_State = X_state, Year = iyear, Number_Men = nummen, Number_Women = numwomen, General_Health = genhlth, Phys_Not_OK =  physhlth, Mental_Not_OK = menthlth, Poor_Mental_or_Phys = poorhlth, Sleep_Hrs = sleptim1, Drepess_Disorder = addepev2, Education = educa, Weight = weight2, Exercise_Past30 = exerany2, Exercise_Type = exract11, Excercise_Count = exeroft1, Exercise_Time = exerhmm1,  Muscle = strength, Days_Depressed = qlmentl2, Days_Anxious = qlstres2, Full_Energy = qlhlth2)
 ```
 Usually a safe maximum threshold is 5% of the total for large datasets. If missing data for a certain feature or sample is more than 5% then you probably should leave that feature or sample out. We therefore check for features (columns) and samples (rows) where more than 5% of the data is missing using a simple function
 
@@ -144,6 +141,7 @@ countNAs_df$cat <- row.names(countNAs_df)
 Now lets make a plot that looks better
 ```{r}
 library(ggplot2)
+library(scales)
 plot2 <- ggplot(countNAs_df, aes(x = reorder(Cat, -countNAs), y = countNAs)) +
   geom_bar(stat = "identity")
 plot2
@@ -153,7 +151,6 @@ plot3 <- ggplot(countNAs_df, aes(x = reorder(Cat, -countNAs), y = countNAs)) +
   theme(axis.text.x = element_text(angle=90))
 plot3
 
-library(scales)
 plot4 <- ggplot(countNAs_df, aes(x = reorder(cat, -countNAs), y = countNAs)) +
   geom_bar(stat = "identity") +
   theme(axis.text.x = element_text(angle=90)) +
@@ -167,7 +164,6 @@ plot5 <- ggplot(countNAs_df, aes(x = reorder(cat, -countNAs), y = countNAs),
   scale_y_continuous(labels = comma) +
   xlab("Variable Names") + ylab("NA Count") + ggtitle("Count of NAs in Data")
   
-
 plot5
 ```
 
