@@ -101,7 +101,7 @@ library(ggplot2)
 library(scales)
 countNAs <- apply(modData, 2, function(x) sum(is.na(x)))
 countNAs_df <- as.data.frame(countNAs)#change to data frame
-countNAs_df$cat <- row.names(countNAs_df)#copy row names to its own column)variable)
+countNAs_df$cat <- row.names(countNAs_df)#copy row names to its own column (variable)
 options(scipen=999)#prevents scientific notation
 countNAs_df$percentNA <- format(countNAs_df$countNAs/nrow(modData), digits = 2)
 countNAs_df$percentNA <- as.numeric(countNAs_df$percentNA)
@@ -305,6 +305,57 @@ From the working data set, let's identify the varaibles we might need:
 | Internet_Past_30 | internet | Internet Use In The Past 30 Days? |
 | Heavy_Alcohol_Calc | X_rfdrhv4 | Heavy Alcohol Consumption Calculated Variable |
 | Is_US_State | NA- | 0 = Guam or Puerto Rico; 1 = US State |
+
+Let's subset the working data set to the variables of interest.
+```{r question1Variables}
+variblesQuest1 <- c("AlcoholDays_Past_30", "Alcohol_Past_30", "Computed_Drinks_Day", "Number_Men", "Number_Women", "Children_Calc", "No_Children", "Internet_Past_30", "Heavy_Alcohol_Calc", "Is_US_State")
+quest1Data <- select(workingData,one_of(variblesQuest1))
+```
+To make things easier and to remove data that may lead to skewed results, I further filter the data to include only complete records:
+```{r completeQuest1}
+quest1Data2 <- filter(quest1Data, complete.cases(quest1Data))
+rm(quest1Data)
+```
+Before moving further, let us make sure we understnad some of the variable definitions more fully:
+
+- AlcoholDays_Past_30 - During the past 30 days, how many days per week or per month did you have at least one drink of any alcoholic beverage such as beer, wine, a malt beverage or liquor?  The first digit denotes days per week (1) or days per month (2). The remaining digits indicate the count of days. 
+  + value range:  `range(quest1Data2$AlcoholDays_Past_30)`
+- Alcohol_Past_30 - Adults who reported having had at least one drink of alcohol in the past 30 days.  1 - Yes; 2 - No
+  + value range:  `range(quest1Data2$Alcohol_Past_30)`
+- Computed_Drinks_Day - Calculated drink-occasions-per-day.  0 - No Drink-Occasions per day; 1 - many
+  + value range:  `range(quest1Data2$Computed_Drinks_Day)`
+- Heavy_Alcohol_Calc - Heavy drinkers (**adult men** having more than two drinks per day and adult women having more than one drink per day).  1 - No; 2 - Yes
+  + value range:  `range(quest1Data2$Heavy_Alcohol_Calc)`
+
+
+Before plotting, need to transform the values into counts.  Then create bar plots showing the relative drinking habits by internet use.  Once complete, I create a dataframe to hold the data for plotting.
+
+- AlcoholDays_Past_30 - count the number of records greater than 0
+- Alcohol_Past_30 - Count Yes
+- Computed_Drinks_Day - count number of records greater than 0
+- Heavy_Alcohol_Calc - count records Yes
+
+```{r quest1Plot1}
+AlcoholDays_Past_30_yes <- nrow(filter(quest1Data2, AlcoholDays_Past_30 > 0))
+AlcoholDays_Past_30_no <- nrow(quest1Data2) - AlcoholDays_Past_30_yes
+
+Alcohol_Past_30_table <- as.data.frame(table(quest1Data2$Alcohol_Past_30))
+Alcohol_Past_30_yes <-  Alcohol_Past_30_table[2,2]
+Alcohol_Past_30_no <- Alcohol_Past_30_table[1,2]
+
+Computed_Drinks_Day_yes <- nrow(filter(quest1Data2, Computed_Drinks_Day > 0))
+Computed_Drinks_Day_no <- nrow(quest1Data2) - Computed_Drinks_Day_yes
+
+Heavy_Alcohol_Calc_table <- as.data.frame(table(quest1Data2$Heavy_Alcohol_Calc))
+Heavy_Alcohol_Calc_yes <- Heavy_Alcohol_Calc_table[2,2]
+Heavy_Alcohol_Calc_no <- Heavy_Alcohol_Calc_table[1,2]
+
+names_df <- c("Drink Days Month", "Drinks Month", "Drinks in Day", "Heavy Drinking")
+counts_df <- c(AlcoholDays_Past_30_yes, Alcohol_Past_30_yes, Computed_Drinks_Day_yes, Heavy_Alcohol_Calc_yes)
+quest1_df <- data.frame(names_df, counts_df)
+
+
+```
 
 ###Research Quesion 2
 > Do people that eat lots of fruits and vegetables more active than those that do not eat these healthy foods?
