@@ -55,11 +55,11 @@ States are responsible to execute the interviewing process.  States may opt to c
   + phone ownership
   + region
 
-##Get Data 
+##Load Data 
 
 Let's first get the data.  Duke made it pretty easy - it is really an RData file so we can just load it into the project directly.  I first set my working directory and then load the data.  Let's alaso take the time to load the required packages for this project.
 
-```{r getRawdata}
+```{r getRawdata, message=FALSE, warning=FALSE}
 
 if(!"dplyr" %in% installed.packages()) install.packages("R.utils")
   library(dplyr)
@@ -137,30 +137,21 @@ Come up with at least three research questions that you want to answer using the
 
 The questions I address below are of interest only after reviewing the data available in the working data set.  These are curious questions, not serious analytic ones.  However, the questions meet the requirements.  I hope you will find them interesting too.
 
-###Research Quesion 1
+###Research Question 1
 > Do people that use the Internet drink more than those that do not use the Internet?
 
 From the working data set, let's identify the varaibles we might need:
 
-| Variable Name** | **Description**
-| ---------------------- | ----------------------------------------- |
-| internet | Internet Use In The Past 30 Days? |
-| X_rfdrhv4 | Heavy Alcohol Consumption Calculated Variable. |
-| sex | Respondent's sex. |
-| is_State | 1 = US State; 2 = Guam; 3 = Puerto Rico |
+| **Variable Name** | **Description** | ---------------------- | **Values** |
+| ---------------------- | ------------------------------------| ------------|
+| internet | Internet Use In The Past 30 Days? | 1 = Yes; 2 = No |
+| X_rfdrhv4 | Heavy Alcohol Consumption Calculated Variable. | 1 = No; 2 = Yes |
+| sex | Respondent's sex. | Male = 1; Female = 2 |
+| is_State | identify a territoy as a US State, Puerto Rico or Guam |1 = US State; 2 = Guam; 3 = Puerto Rico |
 
-Before moving further, let us make sure we understnad some of the variable definitions more fully:
+> NOTE:  X_rfdrhv4 - Heavy drinkers (adult men having more than two drinks per day and adult women having more than one drink per day).  
 
-- Heavy_Alcohol_Calc - Heavy drinkers (adult men having more than two drinks per day and adult women having more than one drink per day).  
-  + value range:  1 = No; 2 = Yes
-- Internet_Past_30 - Have you used the internet in the past 30 days?
-  + value range:  1 = Yes; 2 = No
-- is_State - I defined this new variable to identify US States, Puerto Rico and Guam
-  + value range:  1 = US State; 2 = Guam; 3 = Puerto Rico
-sex - Indicate sex of respondent
-  + value range: Male = 1; Female = 2
-
-Let's subset the working data set to the variables of interest.
+Let's subset the working data set to the variables of interest.  We'll also rename *X_rfdrhv4* to *Heavy_Drinker*.
 ```{r getQuest1Data}
 variblesQuest1 <- c("internet", "X_rfdrhv4", "is_State", "sex")
 quest1Data <- select(modData, one_of(variblesQuest1))
@@ -223,18 +214,18 @@ ggplot(data=tmpdata13, aes(x=internet, fill=sex)) + geom_bar() +
   annotate(geom="text", x=2, y=33, label=paste("Males: ", cnt_Malesg_no_int)) +
   annotate(geom="text", x=1, y=110, label=paste("Females: ", cnt_Femalesg_int)) +
   annotate(geom="text", x=2, y=74, label=paste("Females: ", cnt_Femalesg_no_int))
+
+rm(quest1Data)
 ```
 
-###Research Quesion 2
+###Research Question 2
 > Do people that eat lots of fruits and vegetables more active than those that do not eat these healthy foods?
-
 
 Let's subset the working data set to the variables of interest.
 ```{r getQuest2Data}
 variblesQuest2 <- c("fruitju1", "fruit1", "fvbeans", "fvgreen", "fvorang",  "vegetab1", "ftjuda1_", "frutda1_", "beanday_", "grenday_", "orngday_", "vegeda1_", "X_frutsum", "X_vegesum", "exerany2", "exeroft1", "exerhmm1", "is_State", "sex")
 
 quest2Data <- select(modData,one_of(variblesQuest2))
-#quest2Data <- rename(quest1Data, Heavy_Drinker = X_rfdrhv4)
 
 countNAs <- apply(quest2Data, 2, function(x) sum(is.na(x)))
 countNAs_df <- as.data.frame(countNAs)#change to data frame
@@ -249,35 +240,55 @@ plotQuest2NA <- ggplot(countNAs_df, aes(x = reorder(cat, -countNAs), y = countNA
   scale_y_continuous(labels = comma) + 
   xlab("Variable Names") + ylab("NA Count") + ggtitle("Count of NAs in Data") + coord_flip()
 plotQuest2NA
+rm(countNAs); rm(countNAs_df)
+```
+There are many missing records.  I need to keep some variables because htey are key to the question.  The two variables with the largest number of NAs will be removed from the working data.
+
+```{r removeVars2}
+quest2Data$exeroft1 <- NULL; quest2Data$exerhmm1 <- NULL
+```
+Looking at the remaining variables, the calculated varibles `X_frutsum` and `X_vegesum` provide the best sources of data for fruits and vegetables. `exerany2` looks to be the only remaing source for exercise.
+
+Let's look at these a bit closer:
+
+| **Variable Name** | **Description** | **Values** |
+| ---------------------- | ----------------------------------------- | --------- |
+| X_frutsum | Total Fruits Consumed Per Day | None = 0; 1-9998 = Fruits Consumed |
+| X_vegesum | Total Vegetables Consumed Per Day | None = 0; 1-9998 = Vegetables Consumed |
+| exerany2 | Exercise In Past 30 Days | Yes = 1; No = 2
+
+Notes:  
+
+- is_State and sex were previously defined in the first question
+- exerany2 details: During the past month, other than your regular job, did you participate in any physical activities or exercises such as running, calisthenics, golf, gardening, or walking for exercise?
+
+Let's get only the data we need to answer the question:
+
+```{r}
+quest2Data <- quest2Data %>% select(X_frutsum, X_vegesum, exerany2, sex, is_State)
+```
+We have only the data we need - time to plot!
+```{r quest2Plot}
+tmpdata1 <- quest2Data %>%  
+  na.omit() %>%
+  filter(is_State == 1)
+cnt_Males_exer <- nrow(tmpdata1 %>%  filter(sex=="Male", exerany2=="Yes"))
+cnt_Males_exer_no <- nrow(tmpdata1 %>%  filter(sex=="Male", exerany2=="No"))
+cnt_Females_exer <- nrow(tmpdata1 %>%  filter(sex=="Female", exerany2=="Yes"))
+cnt_Females_exer_no <- nrow(tmpdata1 %>%  filter(sex=="Female", exerany2=="No"))
+
+ggplot(data=tmpdata1, aes(x=exerany2, fill=sex)) + geom_bar() +
+  theme(legend.position="none") + ggtitle("Eating Well & Exercise in US") +
+  annotate(geom="text", x=1, y=67000, label=paste("Males: ", cnt_Males_exer)) +
+  annotate(geom="text", x=2, y=30000, label=paste("Males: ", cnt_Males_exer_no)) +
+  annotate(geom="text", x=1, y=250000, label=paste("Females: ", cnt_Females_exer)) +
+  annotate(geom="text", x=2, y=90000, label=paste("Females: ", cnt_Females_exer_no))
+
+rm(cnt_Females_exer_no); rm(cnt_Females_exer); rm(cnt_Males_exer_no); rm(cnt_Males_exer)
+rm(quest2Data); rm(variblesQuest2); rm(plotQuest2NA)
 ```
 
-Main Survey - Section 11 - Fruits and Vegetables
-•fruitju1: How Many Times Did You Drink 100 Percent Pure Fruit Juices?
-•fruit1: How Many Times Did You Eat Fruit?
-•fvbeans: How Many Times Did You Eat Beans Or Lentils?
-•fvgreen: How Many Times Did You Eat Dark Green Vegetables?
-•fvorang: How Many Times Did You Eat Orange-Colored Vegetables?
-•vegetab1: How Many Times Did You Eat Other Vegetables?
-
-ftjuda1_: Computed Fruit Juice Intake In Times Per Day
-•frutda1_: Computed Fruit Intake In Times Per Day
-•beanday_: Computed Bean Intake In Times Per Day
-•grenday_: Computed Dark Green Vegetable Intake In Times Per Day
-•orngday_: Computed Orange-Colored Vegetable Intake In Times Per Day
-•vegeda1_: Computed Vegetable Intake In Times Per Day
-
-•_frutsum: Total Fruits Consumed Per Day
-•_vegesum: Total Vegetables Consumed Per Day
-
-Main Survey - Section 12 - Exercise (Physical Activity)
-•exerany2: Exercise In Past 30 Days
-•exeroft1: How Many Times Walking, Running, Jogging, Or Swimming
-•exerhmm1: Minutes Or Hours Walking, Running, Jogging, Or Swimming
-•exract21: Other Type Of Physical Activity Giving Most Exercise During Past Month
-•exeroft2: How Many Times Walking, Running, Jogging, Or Swimming
-•exerhmm2: Minutes Or Hours Walking, Running, Jogging, Or Swimming
-
-###Research Quesion 3
+###Research Question 3
 > Are people less prone to depression or anxiety if they exercise?
 
 Let's subset the working data set to the variables of interest.
@@ -301,23 +312,83 @@ plotQuest3NA <- ggplot(countNAs_df, aes(x = reorder(cat, -countNAs), y = countNA
 plotQuest3NA
 
 ```
-There are many missing records.  I need to keep some variables because htey are key to the question.  The two varaibles with the largest number of NAs will be removed from the working data.
+There are many missing records.  I need to keep some variables because htey are key to the question.  The two varaibles with the largest number of NAs will be removed from the working data.  There is simply insuffucient data to draw any resonable conclusions.
 ```{r removeVar3}
 quest3Data$misnowrk <- NULL; quest3Data$mistmnt <- NULL
 ```
+Let's look at these a bit closer:
 
-menthlth: Number Of Days Mental Health Not Good
-•poorhlth: Poor Physical Or Mental Health
+| **Variable Name** | **Description** | **Values** |
+| ---------------------- | ----------------------------------------- | --------- |
+| menthlth | Number Of Days Mental Health Not Good past 30 days | None = 0; 1-30 = Bad Days |
+| poorhlth | days physical/mental health prevented usual activities | None = 0; 1-30 = Bad Days |
+| decide | Difficulty Concentrating Or Remembering | Yes = 1; No = 2 |
+| diffalon | Difficulty Doing Errands Alone | Yes = 1; No = 2 |
+| exerany2 | Exercise In Past 30 Days | Yes = 1; No = 2
 
-decide: Difficulty Concentrating Or Remembering
-Because of a physical, mental, or emotional condition, do you have serious difficulty concentrating, remembering, or making decisions?
+Looking at the remaining variables, only menthlth and decide are the only mental health impairment not combined with other ailments.
+```{r}
+quest3Data <- quest3Data %>% select(menthlth, decide, exerany2, sex, is_State)
+```
+It would be helpful to create a new column as a boolean to identify if `menthlth > 0`.
+```{r quest3DataNewCol}
+quest3Data <- quest3Data %>% mutate(menthlth_YN = ifelse(menthlth > 0, "Yes", "No"))
+sample_n(quest3Data, 6)
+```
 
-diffalon: Difficulty Doing Errands Alone
-Because of a physical, mental, or emotional condition, do you have difficulty doing errands alone such as visiting a doctors office or shopping?
+We have only the data we need - time to plot!
+```{r quest3Plot}
+tmpdata <- quest3Data %>%  
+  na.omit() %>%
+  filter(is_State == 1)
 
-misnowrk: Emotional Problem Kept You From Doing Work Past 30 Days
-During the past 30 days, for about how many days did a mental health condition or emotional problem keep you from doing your work or other usual activities? (If asked, “usual activities” includes housework, self-care, caregiving, volunteer work, attending school, studies or recreation.)
+cnt_Exer_Ment <- nrow(tmpdata %>%  filter(exerany2=="Yes", menthlth_YN == "Yes"))
+cnt_Exer_Ment_No <- nrow(tmpdata %>%  filter(exerany2=="Yes", menthlth_YN == "No"))
+cnt_exer_No_Ment <- nrow(tmpdata %>%  filter(exerany2=="No", menthlth_YN == "Yes"))
+cnt_exer_No_Ment_No <- nrow(tmpdata %>%  filter(exerany2=="No", menthlth_YN == "No"))
 
-mistmnt: Receiving Medicine Or Treatment From Health Pro For Emotional Problem
-Are you now taking medicine or receiving treatment from a doctor or other health professional for any type of mental health condition or emotional problem?
+ggplot(data=tmpdata, aes(x=exerany2, fill=menthlth_YN)) + geom_bar() +
+  theme(legend.position="none") + ggtitle("MentalHealth & Exercise in US") +
+  annotate(geom="text", x=1, y=270000, label=paste("Mental Issues: ", cnt_Exer_Ment)) +
+  annotate(geom="text", x=1, y=120000, label=paste("No Issues: ", cnt_Exer_Ment_No)) +
+  annotate(geom="text", x=2, y=50000, label=paste("No Issues: ", cnt_exer_No_Ment_No)) +
+  annotate(geom="text", x=2, y=100000, label=paste("Mental Issues: ", cnt_exer_No_Ment))
+
+tmpdata2 <- quest3Data %>%  
+  na.omit() %>%
+  filter(is_State == 2)
+cnt_Exer_Ment <- nrow(tmpdata2 %>%  filter(exerany2=="Yes", menthlth_YN == "Yes"))
+cnt_Exer_Ment_No <- nrow(tmpdata2 %>%  filter(exerany2=="Yes", menthlth_YN == "No"))
+cnt_exer_No_Ment <- nrow(tmpdata2 %>%  filter(exerany2=="No", menthlth_YN == "Yes"))
+cnt_exer_No_Ment_No <- nrow(tmpdata2 %>%  filter(exerany2=="No", menthlth_YN == "No"))
+
+ggplot(data=tmpdata2, aes(x=exerany2, fill=menthlth_YN)) + geom_bar() +
+  theme(legend.position="none") + ggtitle("MentalHealth & Exercise in Puerto Rico") +
+  annotate(geom="text", x=1, y=2650, label=paste("Mental Issues: ", cnt_Exer_Ment)) +
+  annotate(geom="text", x=1, y=1000, label=paste("No Issues: ", cnt_Exer_Ment_No)) +
+  annotate(geom="text", x=2, y=1000, label=paste("No Issues: ", cnt_exer_No_Ment_No)) +
+  annotate(geom="text", x=2, y=2500, label=paste("Mental Issues: ", cnt_exer_No_Ment))
+
+tmpdata3 <- quest3Data %>%  
+  na.omit() %>%
+  filter(is_State == 3)
+cnt_Exer_Ment <- nrow(tmpdata3 %>%  filter(exerany2=="Yes", menthlth_YN == "Yes"))
+cnt_Exer_Ment_No <- nrow(tmpdata3 %>%  filter(exerany2=="Yes", menthlth_YN == "No"))
+cnt_exer_No_Ment <- nrow(tmpdata3 %>%  filter(exerany2=="No", menthlth_YN == "Yes"))
+cnt_exer_No_Ment_No <- nrow(tmpdata3 %>%  filter(exerany2=="No", menthlth_YN == "No"))
+
+ggplot(data=tmpdata3, aes(x=exerany2, fill=menthlth_YN)) + geom_bar() +
+  theme(legend.position="none") + ggtitle("MentalHealth & Exercise in Guam") +
+  annotate(geom="text", x=1, y=1050, label=paste("Mental Issues: ", cnt_Exer_Ment)) +
+  annotate(geom="text", x=1, y=400, label=paste("No Issues: ", cnt_Exer_Ment_No)) +
+  annotate(geom="text", x=2, y=180, label=paste("No Issues: ", cnt_exer_No_Ment_No)) +
+  annotate(geom="text", x=2, y=400, label=paste("Mental Issues: ", cnt_exer_No_Ment_No))
+
+# rm(cnt_Females_exer_no); rm(cnt_Females_exer); rm(cnt_Males_exer_no); rm(cnt_Males_exer)
+# rm(quest2Data); rm(variblesQuest2); rm(plotQuest2NA)
+```
+Of the `r cnt_Exer_Ment + cnt_Exer_Ment_No` people that exercise, `r (cnt_Exer_Ment/(cnt_Exer_Ment + cnt_Exer_Ment_No))*100` percent have some form of mental concern.
+
+Conversely, of the `r cnt_exer_No_Ment_No + cnt_exer_No_Ment_No` people that do not exercise, `r (cnt_exer_No_Ment_No/(cnt_exer_No_Ment_No + cnt_exer_No_Ment_No))*100` percent have some form of mental concern.
+
 
