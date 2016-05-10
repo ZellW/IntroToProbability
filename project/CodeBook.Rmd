@@ -87,11 +87,11 @@ library(dplyr)#needed to use the filter function below
 modData <- filter(brfss2013, !X_state == "80"); modData <- filter(modData, !X_state == "0")
 rm(brfss2013)#lets remove this to save on memory
 ```
-Let us now create a new column so we can easily identify US States from Puerto Rico and Guam.  I will assign the value 1 to US States and the value 0 to Puerto Rico and Guam:
+Let us now create a new column so we can easily identify US States from Puerto Rico and Guam.  I will assign the value 1 to US States and the value 2 to Puerto Rico and 3 to Guam:
 ```{r labelStates}
 modData <- modData %>% mutate(is_State = 1)#label all records as a state
-modData$is_State[modData$X_state=="Guam"] <-0
-modData$is_State[modData$X_state=="Puerto Rico"] <-0
+modData$is_State[modData$X_state=="Guam"] <-3
+modData$is_State[modData$X_state=="Puerto Rico"] <-2
 ```
 Usually a safe maximum threshold is 5% of the total for large data sets. If missing data for a certain feature or sample is more than 5% then you probably should leave that feature or sample out. While this is a good general rule, some of the exploratory questions I pose below require the number of men and women to be included in the data.  Therefore, I will keep all variables where the percent of NAs is less than 30%.
 
@@ -363,12 +363,22 @@ row_name <- c("Internet-Yes", "Internet_no")
 counts <- c(AlcoholDays_Past_30_yes, Alcohol_Past_30_yes, Computed_Drinks_Day_yes, Heavy_Alcohol_Calc_yes)
 counts_df <-as.data.frame(counts)
 
-tmpdata <- quest1Data2 %>%  
+tmpdata <- workingData %>%  
+  na.omit() %>%
   group_by(Internet_Past_30) %>% 
   filter(AlcoholDays_Past_30 > 0, Computed_Drinks_Day >0) %>% 
   summarize(ave_alc_days = mean(AlcoholDays_Past_30), Drinks_Day = mean(Computed_Drinks_Day), n=n())
 tmpdata <- tmpdata[, 4]
-barplot(tmpdata)
+ggplot(data=tmpdata, aes(x=Internet_Past_30, y=n)) + geom_bar(stat="identity")
+
+tmpdata <- modData %>%  
+  na.omit() %>%
+  group_by(is_State) %>% 
+  filter(AlcoholDays_Past_30 > 0, Computed_Drinks_Day >0) %>% 
+  summarize(ave_alc_days = mean(AlcoholDays_Past_30), Drinks_Day = mean(Computed_Drinks_Day), n=n())
+tmpdata <- tmpdata[, 4]
+ggplot(data=tmpdata, aes(x=Internet_Past_30, y=n)) + geom_bar(stat="identity")
+
 ```
 Now we have collected the data, let's see if there is any associations via plotting:
 ```{r quest1Plots}

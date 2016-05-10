@@ -1,0 +1,323 @@
+---
+title: "Exploring the BRFSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed:  true
+      smooth_scroll: true
+---
+#Introduction
+This document is prepared to fulfill the requirements for Duke's *Statistics with R* Class hosted by Coursera.  A data set is provided for the assignment - Behavioral Risk Factor Surveillance System (BRFSS).
+
+The project consists of 3 parts:
+
+1. **Data**: (3 points) Describe how the observations in the sample are collected, and the implications of this data collection method on the scope of inference (generalizability / causality). Note that you will need to look into documentation on the BRFSS to answer this question. See http://www.cdc.gov/brfss/ 
+2. **Research questions**: (11 points) Come up with at least three research questions that you want to answer using these data. You should phrase your research questions in a way that matches up with the scope of inference your data set allows for. Make sure that at least two of these questions involve at least three variables. You are welcomed to create new variables based on existing ones. With each question include a brief discussion (1-2 sentences) as to why this question is of interest to you and/or your audience.
+3. **EDA**: (30 points) Perform exploratory data analysis (EDA) that addresses each of the three research questions you outlined above. Your EDA should contain numerical summaries and visualizations. Each R output and plot should be accompanied by a brief interpretation.
+
+**Note**:  6 points allocated to overall organization and readability of your project. Total points add up to 50 points.
+
+##About BRFSS 
+The [Behavioral Risk Factor Surveillance System (BRFSS)](http://www.cdc.gov/brfss/annual_data/2013/pdf/Overview_2013.pdf) is a collaborative project between all of the states in the United States (US) and participating US territories and the Centers for Disease Control and Prevention (CDC).  The BRFSS was initiated in 1984, with 15 states collecting surveillance data on risk behaviors through monthly telephone interviews. Over time, the number of states participating in the survey increased; by 2001, 50 states, the District of Columbia, Puerto Rico, Guam, and the US Virgin Islands were participating in the BRFSS.  Today, all 50 states, the District of Columbia, Puerto Rico, and Guam collect data annually and American Samoa, Federated States of Micronesia, and Palau collect survey data over a limited point- in-time (usually one to three months). 
+
+The BRFSS objective is to collect uniform, state-specific data on preventive health practices and risk behaviors that are linked to chronic diseases, injuries, and preventable infectious diseases that affect the adult population. 
+
+Sample Description In a telephone survey such as the BRFSS, a sample record is one telephone number in the list of all telephone numbers the system randomly selects for dialing. To meet the BRFSS standard for the participating states' sample designs, one must be able to justify sample records as a probability sample of all households with telephones in the state. All participating areas met this criterion in 2013. Fifty-one projects used a disproportionate stratified sample (DSS) design for their landline samples. Guam and Puerto Rico used a simple random-sample design. 
+
+##BRFSS Data Collection
+Tee information below is referenced from the [BRFSS User Guide](http://www.cdc.gov/brfss/data_documentation/pdf/userguidejune2013.pdf)
+States are responsible to execute the interviewing process.  States may opt to contract with a private company or university to conduct interviews or conduct interviews internally, but regardless of who conducts data collection, it is done according to BRFSS protocols.  Surveys are conducted using the following procedure:
+
+- Conduct 20% of the interviews on weekdays
+- Conduct 80% on weeknights and weekends
+- Change schedules to accommodate holidays and special events
+- Make weekday calls just after the dinner hour
+- Make appointment callbacks during hours that are not scheduled for other interviews, generally on weekdays.
+
+###Interesting Sampling Facts
+
+- Landline interviews are held with eligible households. Cellular telephone respondents are weighed as single adult households.*An eligible household is defined as a housing unit that has a separate entrance, where occupants eat separately from other persons on the property, and that is occupied by its members as their principal or secondary place of residence. The following are non-eligible households: vacation homes not occupied by household members for more than 30 days per year, group homes, institutions, and (in the landline sample) households in states other than the one conducting the particular BRFSS questionnaire. Since 2011, adult students living in college housing were included as eligible respondents.*
+- Landlines use a sampling methodology called disproportionate stratified sampling (DSS).  DSS draws telephone numbers from two strata based on the presumed density of known telephone household numbers.  The strata are defined as either high density or medium density.  Telephone numbers from the high density stratum are sampled at a higher rate. The BRFSS User Guide states **DSS sampling telephone numbers is more efficient than simple random sampling.**
+- Cellular phone participants are randomly selected with each having equal probability of selection.
+- BRFSS recommends at least 4,000 interviews per state per year.
+- BRFSS uses a weighting process as an important statistical tool that attempts to remove bias in the sample.  The weighting protocols ensure the data are representative of the population on the following demographics:
+  + sex
+  + age
+  + race
+  + education
+  + marital status
+  + home ownership
+  + phone ownership
+  + region
+
+##Get Data 
+
+Let's first get the data.  Duke made it pretty easy - it is really an RData file so we can just load it into the project directly.  I first set my working directory and then load the data.  Let's alaso take the time to load the required packages for this project.
+
+```{r getRawdata}
+
+if(!"dplyr" %in% installed.packages()) install.packages("R.utils")
+  library(dplyr)
+
+if(!"ggplot2" %in% installed.packages()) install.packages("ggplot2")
+  library(ggplot2)
+
+if(!"scales" %in% installed.packages()) install.packages("scales")
+  library(scales)
+
+setwd("~/GitHub/IntroToProbability/project")#set the working directory
+if(!exists("brfss2013")) load("./data/brfss2013.RData")#only load the data if it is not already loaded
+```
+
+Some [important notes](http://www.cdc.gov/brfss/annual_data/2013/pdf/CODEBOOK13_LLCP.pdf) about the data:
+
+- All missing values are coded NA in the R Workspace.
+- Many variables, such as age, race, education, as well as variables that measure counts of events (drinks, times eating fruit, etc.) have alternate versions in the Calculated Variables section of the data set. Review this section prior to choosing variables for analysis.
+
+Let's get only the data we need.  I know I want to look at data between the US States and the US Territories.
+
+The BRFSS was initiated in 1984, with 15 states collecting surveillance data on risk behaviors through monthly telephone interviews. Over time, the number of states participating in the survey increased; by 2001, 50 states, the District of Columbia, Puerto Rico, Guam, and the US Virgin Islands were participating in the BRFSS. Today, all 50 states, the District of Columbia, **Puerto Rico**, and **Guam** collect data annually and American Samoa, Federated States of Micronesia, and Palau collect survey data over a limited point- in-time (usually one to three months). 
+
+Let's add a new column to the data (like we more than the 330 we already have) to identify if the observation is from a US State, i.e., not either Puerto Rico or Guam.  This will take a few steps to complete:
+
+Let's check the state data first to make sure it is clean and tidy.
+```{r checkStates}
+#Before assigning a new column for US State v Not US State, let's make sure the state data looks clean:
+unique(brfss2013$X_state)
+```
+
+X_state values of 0 and 80 do not make sense.  Let's remove them:
+```{r removeBadstates, warning=FALSE, message=FALSE}
+modData <- filter(brfss2013, !X_state == "80"); modData <- filter(modData, !X_state == "0")
+rm(brfss2013)#lets remove this to save on memory
+```
+Let us now create a new column so we can easily identify US States from Puerto Rico and Guam.  I will assign the value 1 to US States and the value 2 to Puerto Rico and 3 to Guam:
+```{r labelStates}
+modData <- modData %>% mutate(is_State = 1)#label all records as a state
+modData$is_State[modData$X_state=="Guam"] <-3
+modData$is_State[modData$X_state=="Puerto Rico"] <-2
+```
+Usually a safe maximum threshold is 5% of the total for large data sets. If missing data for a certain feature or sample is more than 5% then you probably should leave that feature or sample out. While this is a good general rule, some of the exploratory questions I pose below require the number of men and women to be included in the data.  Therefore, I will keep all variables where the percent of NAs is less than 30%.
+
+Let's try visualizing the missing data.  First we need to identify all the NAs.
+```{r countNA, message=FALSE, warning=FALSE}
+countNAs <- apply(modData, 2, function(x) sum(is.na(x)))
+countNAs_df <- as.data.frame(countNAs)#change to data frame
+countNAs_df$cat <- row.names(countNAs_df)#copy row names to its own column (variable)
+options(scipen=999)#prevents scientific notation
+countNAs_df$percentNA <- format(countNAs_df$countNAs/nrow(modData), digits = 2)
+countNAs_df$percentNA <- as.numeric(countNAs_df$percentNA)
+
+plot5 <- ggplot(countNAs_df, aes(x = reorder(cat, -countNAs), y = countNAs), 
+                ylab("NA Count"), xlab("Variable Name")) +
+  geom_bar(stat = "identity") + 
+  theme(axis.ticks = element_blank(), axis.text.y = element_blank()) +
+  scale_y_continuous(labels = comma) + 
+  xlab("Variable Names") + ylab("NA Count") + ggtitle("Count of NAs in Data") + coord_flip()
+plot5
+```
+The plot was intentionally designed not to display the variables on the y axis - there are too many of them.  The plot does tell me what I want to know - many of the variables have very high numbers of NAs. We need to remove these variables. I'll use the function `na.omit()` below hen collecting plot data.
+
+I wonder how many records exist for each state or non-state.  Also, which state has the most records and which one has the fewest?
+```{r recordCounts}
+countByState <- modData %>% group_by(is_State) %>% summarize(RecordCount = n())
+```
+##Research questions
+The Project requires that the research questions satisfy the following:
+
+Come up with at least three research questions that you want to answer using these data. You should phrase your research questions in a way that matches up with the scope of inference your data set allows for. 
+
+- Make sure that at least two of these questions involve at least three variables. You are welcomed to create new variables based on existing ones. 
+- With each question include a brief discussion (1-2 sentences) as to why this question is of interest to you and/or your audience.*
+
+The questions I address below are of interest only after reviewing the data available in the working data set.  These are curious questions, not serious analytic ones.  However, the questions meet the requirements.  I hope you will find them interesting too.
+
+###Research Quesion 1
+> Do people that use the Internet drink more than those that do not use the Internet?
+
+From the working data set, let's identify the varaibles we might need:
+
+| Variable Name** | **Description**
+| ---------------------- | ----------------------------------------- |
+| internet | Internet Use In The Past 30 Days? |
+| X_rfdrhv4 | Heavy Alcohol Consumption Calculated Variable. |
+| sex | Respondent's sex. |
+| is_State | 1 = US State; 2 = Guam; 3 = Puerto Rico |
+
+Before moving further, let us make sure we understnad some of the variable definitions more fully:
+
+- Heavy_Alcohol_Calc - Heavy drinkers (adult men having more than two drinks per day and adult women having more than one drink per day).  
+  + value range:  1 = No; 2 = Yes
+- Internet_Past_30 - Have you used the internet in the past 30 days?
+  + value range:  1 = Yes; 2 = No
+- is_State - I defined this new variable to identify US States, Puerto Rico and Guam
+  + value range:  1 = US State; 2 = Guam; 3 = Puerto Rico
+sex - Indicate sex of respondent
+  + value range: Male = 1; Female = 2
+
+Let's subset the working data set to the variables of interest.
+```{r getQuest1Data}
+variblesQuest1 <- c("internet", "X_rfdrhv4", "is_State", "sex")
+quest1Data <- select(modData, one_of(variblesQuest1))
+quest1Data <- rename(quest1Data, Heavy_Drinker = X_rfdrhv4)
+```
+Time to plot!
+```{r quest1Plot1}
+tmpdata1 <- quest1Data %>%  
+  na.omit() %>%
+  filter(Heavy_Drinker == "Yes", is_State == 1)
+
+cnt_Males_int <- nrow(tmpdata1 %>%  filter(sex=="Male", internet=="Yes"))
+cnt_Males_no_int <- nrow(tmpdata1 %>%  filter(sex=="Male", internet=="No"))
+cnt_Females_int <- nrow(tmpdata1 %>%  filter(sex=="Female", internet=="Yes"))
+cnt_Females_no_int <- nrow(tmpdata1 %>%  filter(sex=="Female", internet=="No"))
+
+#Puerto Rico
+tmpdata12 <- quest1Data %>%  
+  na.omit() %>%
+  group_by(internet) %>% 
+  filter(Heavy_Drinker == "Yes", is_State ==2)
+cnt_Malespr_int <- nrow(tmpdata12 %>%  filter(sex=="Male", internet=="Yes"))
+cnt_Malespr_no_int <- nrow(tmpdata12 %>%  filter(sex=="Male", internet=="No"))
+cnt_Femalespr_int <- nrow(tmpdata12 %>%  filter(sex=="Female", internet=="Yes"))
+cnt_Femalespr_no_int <- nrow(tmpdata12 %>%  filter(sex=="Female", internet=="No"))
+
+#Guam
+tmpdata13 <- quest1Data %>%  
+  na.omit() %>%
+  group_by(internet) %>% 
+  filter(Heavy_Drinker == "Yes", is_State ==3)
+cnt_Malesg_int <- nrow(tmpdata13 %>%  filter(sex=="Male", internet=="Yes"))
+cnt_Malesg_no_int <- nrow(tmpdata13 %>%  filter(sex=="Male", internet=="No"))
+cnt_Femalesg_int <- nrow(tmpdata13 %>%  filter(sex=="Female", internet=="Yes"))
+cnt_Femalesg_no_int <- nrow(tmpdata13 %>%  filter(sex=="Female", internet=="No"))
+ 
+par(mfrow=c(1,3)) #http://www.statmethods.net/advgraphs/layout.html  dev.off()
+#http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/
+#ggplot(data=tmpdata1, aes(x=internet, y=X_rfdrhv4, fill=sex)) + geom_bar(stat="identity")
+ggplot(data=tmpdata1, aes(x=internet, fill=sex)) + geom_bar() + 
+  theme(legend.position="none") + ggtitle("Who Uses Internet in US") +
+  annotate(geom="text", x=1, y=5000, label=paste("Males: ", cnt_Males_int)) +
+  annotate(geom="text", x=2, y=1600, label=paste("Males: ", cnt_Males_no_int)) +
+  annotate(geom="text", x=1, y=15000, label=paste("Females: ", cnt_Females_int)) +
+  annotate(geom="text", x=2, y=3500, label=paste("Females: ", cnt_Females_no_int))
+
+#State Explore
+#Puerto Rico
+ggplot(data=tmpdata12, aes(x=internet, fill=sex)) + geom_bar() + 
+  theme(legend.position="none") + ggtitle("Who Uses Internet in Puerto Rico") +
+  annotate(geom="text", x=1, y=30, label=paste("Males: ", cnt_Malespr_int)) +
+  annotate(geom="text", x=2, y=9, label=paste("Males: ", cnt_Malespr_no_int)) +
+  annotate(geom="text", x=1, y=75, label=paste("Females: ", cnt_Femalespr_int)) +
+  annotate(geom="text", x=2, y=21, label=paste("Females: ", cnt_Femalespr_no_int))
+
+#Guam
+ggplot(data=tmpdata13, aes(x=internet, fill=sex)) + geom_bar() + 
+  theme(legend.position="none") + ggtitle("Who Uses Internet in Guam") +
+  annotate(geom="text", x=1, y=37, label=paste("Males: ", cnt_Malesg_int)) +
+  annotate(geom="text", x=2, y=33, label=paste("Males: ", cnt_Malesg_no_int)) +
+  annotate(geom="text", x=1, y=110, label=paste("Females: ", cnt_Femalesg_int)) +
+  annotate(geom="text", x=2, y=74, label=paste("Females: ", cnt_Femalesg_no_int))
+```
+
+###Research Quesion 2
+> Do people that eat lots of fruits and vegetables more active than those that do not eat these healthy foods?
+
+
+Let's subset the working data set to the variables of interest.
+```{r getQuest2Data}
+variblesQuest2 <- c("fruitju1", "fruit1", "fvbeans", "fvgreen", "fvorang",  "vegetab1", "ftjuda1_", "frutda1_", "beanday_", "grenday_", "orngday_", "vegeda1_", "X_frutsum", "X_vegesum", "exerany2", "exeroft1", "exerhmm1", "is_State", "sex")
+
+quest2Data <- select(modData,one_of(variblesQuest2))
+#quest2Data <- rename(quest1Data, Heavy_Drinker = X_rfdrhv4)
+
+countNAs <- apply(quest2Data, 2, function(x) sum(is.na(x)))
+countNAs_df <- as.data.frame(countNAs)#change to data frame
+countNAs_df$cat <- row.names(countNAs_df)#copy row names to its own column (variable)
+options(scipen=999)#prevents scientific notation
+countNAs_df$percentNA <- format(countNAs_df$countNAs/nrow(modData), digits = 2)
+countNAs_df$percentNA <- as.numeric(countNAs_df$percentNA)
+
+plotQuest2NA <- ggplot(countNAs_df, aes(x = reorder(cat, -countNAs), y = countNAs), 
+                ylab("NA Count"), xlab("Variable Name")) +
+  geom_bar(stat = "identity") + 
+  scale_y_continuous(labels = comma) + 
+  xlab("Variable Names") + ylab("NA Count") + ggtitle("Count of NAs in Data") + coord_flip()
+plotQuest2NA
+```
+
+Main Survey - Section 11 - Fruits and Vegetables
+•fruitju1: How Many Times Did You Drink 100 Percent Pure Fruit Juices?
+•fruit1: How Many Times Did You Eat Fruit?
+•fvbeans: How Many Times Did You Eat Beans Or Lentils?
+•fvgreen: How Many Times Did You Eat Dark Green Vegetables?
+•fvorang: How Many Times Did You Eat Orange-Colored Vegetables?
+•vegetab1: How Many Times Did You Eat Other Vegetables?
+
+ftjuda1_: Computed Fruit Juice Intake In Times Per Day
+•frutda1_: Computed Fruit Intake In Times Per Day
+•beanday_: Computed Bean Intake In Times Per Day
+•grenday_: Computed Dark Green Vegetable Intake In Times Per Day
+•orngday_: Computed Orange-Colored Vegetable Intake In Times Per Day
+•vegeda1_: Computed Vegetable Intake In Times Per Day
+
+•_frutsum: Total Fruits Consumed Per Day
+•_vegesum: Total Vegetables Consumed Per Day
+
+Main Survey - Section 12 - Exercise (Physical Activity)
+•exerany2: Exercise In Past 30 Days
+•exeroft1: How Many Times Walking, Running, Jogging, Or Swimming
+•exerhmm1: Minutes Or Hours Walking, Running, Jogging, Or Swimming
+•exract21: Other Type Of Physical Activity Giving Most Exercise During Past Month
+•exeroft2: How Many Times Walking, Running, Jogging, Or Swimming
+•exerhmm2: Minutes Or Hours Walking, Running, Jogging, Or Swimming
+
+###Research Quesion 3
+> Are people less prone to depression or anxiety if they exercise?
+
+Let's subset the working data set to the variables of interest.
+```{r getQuest3Data}
+variblesQuest3 <- c("menthlth", "poorhlth", "decide", "diffalon", "misnowrk",  "mistmnt",  "exerany2", "exeroft1", "exerhmm1", "is_State", "sex")
+
+quest3Data <- select(modData,one_of(variblesQuest3))
+
+countNAs <- apply(quest3Data, 2, function(x) sum(is.na(x)))
+countNAs_df <- as.data.frame(countNAs)#change to data frame
+countNAs_df$cat <- row.names(countNAs_df)#copy row names to its own column (variable)
+options(scipen=999)#prevents scientific notation
+countNAs_df$percentNA <- format(countNAs_df$countNAs/nrow(modData), digits = 2)
+countNAs_df$percentNA <- as.numeric(countNAs_df$percentNA)
+
+plotQuest3NA <- ggplot(countNAs_df, aes(x = reorder(cat, -countNAs), y = countNAs), 
+                ylab("NA Count"), xlab("Variable Name")) +
+  geom_bar(stat = "identity") + 
+  scale_y_continuous(labels = comma) + 
+  xlab("Variable Names") + ylab("NA Count") + ggtitle("Count of NAs in Data") + coord_flip()
+plotQuest3NA
+
+```
+There are many missing records.  I need to keep some variables because htey are key to the question.  The two varaibles with the largest number of NAs will be removed from the working data.
+```{r removeVar3}
+quest3Data$misnowrk <- NULL; quest3Data$mistmnt <- NULL
+```
+
+menthlth: Number Of Days Mental Health Not Good
+•poorhlth: Poor Physical Or Mental Health
+
+decide: Difficulty Concentrating Or Remembering
+Because of a physical, mental, or emotional condition, do you have serious difficulty concentrating, remembering, or making decisions?
+
+diffalon: Difficulty Doing Errands Alone
+Because of a physical, mental, or emotional condition, do you have difficulty doing errands alone such as visiting a doctors office or shopping?
+
+misnowrk: Emotional Problem Kept You From Doing Work Past 30 Days
+During the past 30 days, for about how many days did a mental health condition or emotional problem keep you from doing your work or other usual activities? (If asked, “usual activities” includes housework, self-care, caregiving, volunteer work, attending school, studies or recreation.)
+
+mistmnt: Receiving Medicine Or Treatment From Health Pro For Emotional Problem
+Are you now taking medicine or receiving treatment from a doctor or other health professional for any type of mental health condition or emotional problem?
+
