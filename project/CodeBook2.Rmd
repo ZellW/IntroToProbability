@@ -53,29 +53,26 @@ States are responsible to execute the interviewing process according to BRFSS pr
 
 ###Generalizability
 
-We learned above BRFSS attempts to use random sampling technoques to remove bias from the surveys.  If true, then the results of the surveys should be gernerailzable to the populations.  If generalizable, results suggest causation.
+We learned above BRFSS attempts to use random sampling techniques to remove bias from the surveys.  If true, then the results of the surveys should be gernerailzable to the populations.  If generalizable, results suggest causation.  Causation can only be inferred from a randomized experiment.
 
- 
+For a study to be defined as an experiemnt the four principles of experimental design must be fulfilled:
 
-* If random sampling has been employed in data collection, the results should be generalizable to the target population. 
+- Control any possible confounders
+- Randomize into treatment and control groups
+- Replicate by using a sufficiently large sample or repeating the experiment
+- Block any variables that might influence the response.  
 
-* If random assignment has been employed in study design, the results suggest causality. 
+It is clear from the BRFSS Data Collection provided above that the interviewing process is intended to be a random process.  BRFSS has gone to resonable lengths to reduce bias.  However, often bias cannot be completed elimiated.  For example, in surveys, practicioners must guard against non-response and convenience sampling.
 
-LO 6. Question confounding variables and sources of bias in a given study.  
+Non-response bias occurs when a low percentage of the randomly sampled respondensts respond, they may not represent the viiews of the population.  Similarly, easily accessed people may provide data inconsistent with the larger population.  Both of these bias types could exist in the BRFSS data - there is no information refuting this possibility.
 
-LO 7. Distinguish between simple random, stratified, and cluster sampling, and recognize the benefits and drawbacks of choosing one sampling scheme over another.  
+Also, the number of responses may not be represenrative.  
 
-* Simple random sampling: Each subject in the population is equally likely to be selected. 
-
-* Stratified sampling: First divide the population into homogenous strata (subjects within each stratum are similar, across strata are different), then randomly sample from within each strata. 
-
-* Cluster sampling: First divide the population into clusters (subjects within each cluster are non-homogenous, but clusters are similar to each other), then randomly sample a few clusters, and then randomly sample from within each cluster. 
-
-LO 8. Identify the four principles of experimental design and recognize their purposes: control any possible confounders, randomize into treatment and control groups, replicate by using a sufficiently large sample or repeating the experiment, and block any variables that might influence the response.  
-
-
-non response
-convenience sampling
+```{r recordCounts}
+byState <- modData %>% group_by(X_state) %>% summarize(count_records = n()) %>% arrange(desc(count_records))
+byState_df <- as.data.frame(byState)
+head(byState_df); tail(byState_df)
+```
 
 
 ##Load Data 
